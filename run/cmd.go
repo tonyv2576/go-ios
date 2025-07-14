@@ -2,6 +2,7 @@ package run
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -12,19 +13,36 @@ func runCommand(name string, params ...string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return runCommandAt(name, localDir, params...)
+	return runCommandEx(name, localDir, nil, params...)
 }
 
-func runCommandAt(name, dir string, params ...string) (string, error) {
+func runCommandOut(out io.Writer, name string, params ...string) error {
+	localDir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	_, err = runCommandEx(name, localDir, out, params...)
+	return err
+}
+
+func runCommandEx(name, dir string, out io.Writer, params ...string) (string, error) {
 	c := exec.Command(name, params...)
 	if len(dir) > 0 {
 		c.Dir = dir
 	}
 
 	output := bytes.NewBuffer(nil)
-	c.Stdout = output
+	c.Stderr = output
+	if out != nil {
+		c.Stdout = out
+	} else {
+		c.Stdout = output
+	}
 
-	if err := c.Run(); err != nil {
+	if err := c.Start(); err != nil {
+		return "", err
+	}
+	if err := c.Wait(); err != nil {
 		return "", err
 	}
 

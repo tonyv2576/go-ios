@@ -68,7 +68,7 @@ func (c *Config) Do() error {
 		if err := run.EmbedMobileProfile(info.Bundle.Name, c.ProfilePath); err != nil {
 			return err
 		}
-		if err := run.ExtractEntitlements(info.Bundle.Name); err != nil {
+		if err := run.ExtractEntitlements(c.ProfilePath); err != nil {
 			return err
 		}
 		if err := run.ResignBundle(info.Bundle.Name, hash); err != nil {

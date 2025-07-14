@@ -29,11 +29,24 @@ func FindCertificates() ([]*Certificate, error) {
 }
 
 func ResignBundle(appName, certHash string) error {
+	realError := func(msg string) bool {
+
+		outMsg := strings.TrimSpace(msg)
+		promptSuccess := "replacing existing signature"
+
+		if len(outMsg) > 0 {
+			if strings.HasSuffix(outMsg, promptSuccess) {
+				return false
+			}
+		}
+		return true
+	}
 	out, err := runCommand("codesign", "-f", "-s", certHash, "--entitlements", "entitlements.plist", appName+"/main")
 	if err != nil {
 		return err
 	}
-	if len(out) > 0 {
+	if len(out) > 0 && realError(out) {
+
 		return errors.New(out)
 	}
 
@@ -41,7 +54,7 @@ func ResignBundle(appName, certHash string) error {
 	if err != nil {
 		return err
 	}
-	if len(out) > 0 && !strings.HasSuffix(strings.ToLower(out), "replacing existing signature") {
+	if len(out) > 0 && realError(out) {
 		return errors.New(out)
 	}
 
@@ -59,9 +72,10 @@ func VerifyBundle(appName string) (bool, error) {
 	promptReq := "satisfies its designated requirement"
 
 	for _, v := range strings.Split(out, "\n") {
-		title := strings.Split(v, ":")
-		if len(title) >= 2 {
-			msg := strings.TrimSpace(title[1])
+		values := strings.Split(v, ":")
+
+		if len(values) >= 2 {
+			msg := strings.TrimSpace(values[1])
 			if strings.EqualFold(msg, promptDisk) {
 				validOnDisk = true
 			} else if strings.EqualFold(msg, promptReq) {

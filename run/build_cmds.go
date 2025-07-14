@@ -2,6 +2,7 @@ package run
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -60,20 +61,25 @@ func EmbedMobileProfile(bundleName, profilePath string) error {
 	return nil
 }
 func ExtractEntitlements(profilePath string) error {
-	out, err := runCommand("security", "cms", "-D", "-i", profilePath, ">", "temp.plist")
+	tempOut, err := os.Create("temp.plist")
 	if err != nil {
 		return err
 	}
-	if len(out) > 0 {
-		return errors.New(out)
-	}
+	defer tempOut.Close()
 
-	out, err = runCommand("/usr/libexec/PlistBuddy", "-x", "-c", "'Print:Entitlements'", "temp.plist", ">", "entitlements.plist")
+	err = runCommandOut(tempOut, "security", "cms", "-D", "-i", profilePath)
 	if err != nil {
 		return err
 	}
-	if len(out) > 0 {
-		return errors.New(out)
+	entOut, err := os.Create("entitlements.plist")
+	if err != nil {
+		return err
+	}
+	defer entOut.Close()
+
+	err = runCommandOut(entOut, "/usr/libexec/PlistBuddy", "-x", "-c", "Print:Entitlements", "temp.plist")
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -90,26 +96,24 @@ func DeployBundle(bundleName string) (*BuildDetails, error) {
 		return nil, err
 	}
 
-	phase := -1
 	progress := "---"
 	action := ""
 	errMsg := ""
 
 	for _, v := range strings.Split(out, "\n") {
 		v = strings.TrimSpace(v)
-		if strings.HasPrefix(v, "------") {
-			if strings.Contains(strings.ToLower(v), "install phase") {
-				phase = 0
-			}
+		if strings.HasPrefix(v, "-") {
+			continue
 		}
 		if strings.HasPrefix(v, "[") {
-			if phase >= 0 && len(v) >= 6 {
+			if len(v) >= 6 {
 				progress = strings.TrimSpace(v[:6])
 				progress = strings.TrimPrefix(strings.TrimSuffix(progress, "]"), "[")
 
 				action = strings.TrimSpace(strings.TrimPrefix(v, progress))
 			}
 		} else {
+			fmt.Println(progress, action)
 			errMsg = v
 			break
 		}
