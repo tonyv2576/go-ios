@@ -6,6 +6,9 @@ import (
 	"strings"
 )
 
+type PlistFile struct {
+}
+
 type BuildDetails struct {
 	Progress string
 	Action   string

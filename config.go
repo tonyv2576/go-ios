@@ -5,15 +5,22 @@ import (
 )
 
 type Config struct {
-	Bundle      string
-	Certificate string
-	ProfilePath string
-	CodePath    string
+	Bundle       string
+	Certificate  string
+	ProfilePath  string
+	CodePath     string
+	AppendedPath string
+
+	Simulator bool
 
 	Mode int // 0 std-build, build, 1 sign, 2 install
 }
 
 func (c *Config) Do() error {
+	if err := run.CheckDependencies(); err != nil {
+		return err
+	}
+
 	info, err := run.BundleInfo()
 	if err != nil {
 		return err
@@ -25,7 +32,7 @@ func (c *Config) Do() error {
 		if len(c.Bundle) <= 0 {
 			return ErrFlagBundle
 		}
-		if err := run.BuildBundle(c.Bundle, info.ProjectPath); err != nil {
+		if err := run.BuildBundle(c.Bundle, info.ProjectPath, c.Simulator); err != nil {
 			return err
 		}
 
@@ -35,11 +42,17 @@ func (c *Config) Do() error {
 			return ErrFlagBundle
 		}
 
-		if err := run.BuildBundle(c.Bundle, c.CodePath); err != nil {
+		if err := run.BuildBundle(c.Bundle, c.CodePath, c.Simulator); err != nil {
 			return err
 		}
-		if err := run.ConvertPlist(info.Bundle.Path); err != nil {
-			return err
+		if len(c.AppendedPath) > 0 {
+			if err := run.AppendToPlist(info.Bundle.Path, conf.AppendedPath); err != nil {
+				return err
+			}
+		} else {
+			if err := run.ConvertPlist(info.Bundle.Path); err != nil {
+				return err
+			}
 		}
 	case 3:
 		// codesign build

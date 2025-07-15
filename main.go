@@ -10,19 +10,18 @@ var conf = &Config{}
 
 func init() {
 	if len(os.Args) < 2 {
-		fmt.Println("expected 'build', 'build-std', 'sign', or 'install' subcommands")
+		fmt.Println("expected 'build', 'sign', or 'install' subcommands")
 		os.Exit(1)
 	}
 
-	// shared flags
-	var bundle, profile, cert string
+	var bundle, profile, cert, appended string
+	var unsigned, simulator bool
 
-	// define subcommands
 	buildCmd := flag.NewFlagSet("build", flag.ExitOnError)
 	buildCmd.StringVar(&bundle, "bundle", "", "Bundle identifier")
-
-	buildStdCmd := flag.NewFlagSet("build-std", flag.ExitOnError)
-	buildStdCmd.StringVar(&bundle, "bundle", "", "Bundle identifier")
+	buildCmd.StringVar(&appended, "append", "", "Creates an unsigned build and with custom keys")
+	buildCmd.BoolVar(&unsigned, "unsigned", false, "Creates an unsigned build with an editable plist file")
+	buildCmd.BoolVar(&simulator, "simulator", false, "Creates a build compatible with ios simulators")
 
 	signCmd := flag.NewFlagSet("sign", flag.ExitOnError)
 	signCmd.StringVar(&profile, "profile", "", "Mobile provisioning profile")
@@ -31,12 +30,13 @@ func init() {
 	installCmd := flag.NewFlagSet("install", flag.ExitOnError)
 
 	switch os.Args[1] {
-	case "build-std":
-		conf.Mode = 1
-		buildStdCmd.Parse(os.Args[2:])
 	case "build":
-		conf.Mode = 2
+		conf.Mode = 1
 		buildCmd.Parse(os.Args[2:])
+
+		if unsigned || len(appended) > 0 {
+			conf.Mode = 2
+		}
 	case "sign":
 		conf.Mode = 3
 		signCmd.Parse(os.Args[2:])
@@ -71,6 +71,8 @@ func init() {
 	conf.ProfilePath = profile
 	conf.Certificate = cert
 	conf.CodePath = targetDir
+	conf.AppendedPath = appended
+	conf.Simulator = simulator
 }
 
 func main() {

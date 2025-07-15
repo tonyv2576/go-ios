@@ -2,6 +2,7 @@ package run
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -86,6 +87,7 @@ func VerifyBundle(appName string) (bool, error) {
 		}
 	}
 	if !validOnDisk || !meetsRequirement {
+		fmt.Println(out)
 		return false, errors.New("failed to verify bundle")
 	}
 

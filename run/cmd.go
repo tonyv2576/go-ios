@@ -2,6 +2,7 @@ package run
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"os/exec"
@@ -32,7 +33,10 @@ func runCommandEx(name, dir string, out io.Writer, params ...string) (string, er
 	}
 
 	output := bytes.NewBuffer(nil)
-	c.Stderr = output
+	errOutput := bytes.NewBuffer(nil)
+
+	c.Stdout = output
+	c.Stderr = errOutput
 	if out != nil {
 		c.Stdout = out
 	} else {
@@ -40,11 +44,15 @@ func runCommandEx(name, dir string, out io.Writer, params ...string) (string, er
 	}
 
 	if err := c.Start(); err != nil {
-		return "", err
+		return output.String(), errors.New(errOutput.String())
 	}
 	if err := c.Wait(); err != nil {
-		return "", err
+		return output.String(), errors.New(errOutput.String())
 	}
 
-	return strings.TrimSpace(output.String()), nil
+	result := strings.TrimSpace(output.String())
+	if len(result) <= 0 {
+		result = strings.TrimSpace(errOutput.String())
+	}
+	return result, nil
 }

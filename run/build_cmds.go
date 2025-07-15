@@ -6,6 +6,8 @@ import (
 	"os"
 	"path"
 	"strings"
+
+	"howett.net/plist"
 )
 
 func BundleInfo() (*Bundle, error) {
@@ -22,8 +24,12 @@ func BundleInfo() (*Bundle, error) {
 	return &b, nil
 }
 
-func BuildBundle(bundleId string, codePath string) error {
-	out, err := runCommand("gomobile", "build", "-target=ios", "-bundleid="+bundleId, codePath)
+func BuildBundle(bundleId string, codePath string, simulator bool) error {
+	target := "ios"
+	if simulator {
+		target += "simulator"
+	}
+	out, err := runCommand("gomobile", "build", "-target=iossimulator", "-bundleid="+bundleId, codePath)
 	if err != nil {
 		return err
 	}
@@ -36,14 +42,72 @@ func BuildBundle(bundleId string, codePath string) error {
 }
 
 func ConvertPlist(bundlePath string) error {
-	plistPath := path.Join(bundlePath, "Info.plist")
-	out, err := runCommand("plutil", "-convert", "xml1", plistPath)
+	var plistData map[string]any
+
+	plistPath := bundlePath + "/Info.plist"
+	plistFile, err := os.Open(plistPath)
 	if err != nil {
 		return err
 	}
+	defer plistFile.Close()
+	decoder := plist.NewDecoder(plistFile)
+	if err := decoder.Decode(&plistData); err != nil {
+		return err
+	}
 
-	if len(out) > 0 {
-		return errors.New(out)
+	f, err := os.OpenFile(plistPath, os.O_RDWR, os.ModeAppend)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	encoder := plist.NewEncoder(f)
+	if err := encoder.Encode(plistData); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func AppendToPlist(bundlePath, appendedPath string) error {
+	var plistData map[string]any
+	var appendedData map[string]any
+
+	plistPath := bundlePath + "/Info.plist"
+	plistFile, err := os.Open(plistPath)
+	if err != nil {
+		return err
+	}
+	defer plistFile.Close()
+	appendedFile, err := os.Open(appendedPath)
+	if err != nil {
+		return err
+	}
+	defer appendedFile.Close()
+
+	decoder := plist.NewDecoder(plistFile)
+	if err := decoder.Decode(&plistData); err != nil {
+		return err
+	}
+
+	decoder = plist.NewDecoder(appendedFile)
+	if err := decoder.Decode(&appendedData); err != nil {
+		return err
+	}
+
+	for key, value := range appendedData {
+		plistData[key] = value
+	}
+
+	f, err := os.OpenFile(plistPath, os.O_RDWR, os.ModeAppend)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	encoder := plist.NewBinaryEncoder(f)
+	if err := encoder.Encode(plistData); err != nil {
+		return err
 	}
 
 	return nil
