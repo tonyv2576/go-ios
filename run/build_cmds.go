@@ -29,7 +29,7 @@ func BuildBundle(bundleId string, codePath string, simulator bool) error {
 	if simulator {
 		target += "simulator"
 	}
-	out, err := runCommand("gomobile", "build", "-target=iossimulator", "-bundleid="+bundleId, codePath)
+	out, err := runCommand("gomobile", "build", "-target="+target, "-bundleid="+bundleId, codePath)
 	if err != nil {
 		return err
 	}
