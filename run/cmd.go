@@ -10,6 +10,7 @@ import (
 )
 
 func runCommand(name string, params ...string) (string, error) {
+	// short hand for running commands in the current directory
 	localDir, err := os.Getwd()
 	if err != nil {
 		return "", err
@@ -18,6 +19,7 @@ func runCommand(name string, params ...string) (string, error) {
 }
 
 func runCommandOut(out io.Writer, name string, params ...string) error {
+	// shorthand for running commands with an io.Writer instead of a string output
 	localDir, err := os.Getwd()
 	if err != nil {
 		return err
@@ -37,12 +39,12 @@ func runCommandEx(name, dir string, out io.Writer, params ...string) (string, er
 
 	c.Stdout = output
 	c.Stderr = errOutput
+	// use the writer if one was passed in
 	if out != nil {
 		c.Stdout = out
-	} else {
-		c.Stdout = output
 	}
 
+	// return the stderr output on fail
 	if err := c.Start(); err != nil {
 		return output.String(), errors.New(errOutput.String())
 	}
@@ -50,8 +52,10 @@ func runCommandEx(name, dir string, out io.Writer, params ...string) (string, er
 		return output.String(), errors.New(errOutput.String())
 	}
 
+	// get rid of unnecessary white space
 	result := strings.TrimSpace(output.String())
 	if len(result) <= 0 {
+		// fallback because some commands use stderr only
 		result = strings.TrimSpace(errOutput.String())
 	}
 	return result, nil

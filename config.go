@@ -29,6 +29,7 @@ func (c *Config) Do() error {
 	switch c.Mode {
 	case 1:
 		// standard build
+		// afaik, gomobile signs them using xcode's CLI
 		if len(c.Bundle) <= 0 {
 			return ErrFlagBundle
 		}
@@ -38,6 +39,7 @@ func (c *Config) Do() error {
 
 	case 2:
 		// editable build
+		// once we edit the build, it will need to be co-signed again.
 		if len(c.Bundle) <= 0 {
 			return ErrFlagBundle
 		}
@@ -65,7 +67,10 @@ func (c *Config) Do() error {
 
 		hash := c.Certificate
 
+		// if no hash is provided
 		if len(hash) <= 0 {
+			// use the findcertificates function and use the one in there.
+			// note: if more than one exists, one must be provided manually anyway
 			if certs, err := run.FindCertificates(); err != nil {
 				return err
 			} else if len(certs) <= 0 {
@@ -76,6 +81,7 @@ func (c *Config) Do() error {
 				hash = certs[0].Hash
 			}
 		}
+		// rid ourselves of those pesky temporary files
 		defer run.RemoveTempFiles(info.ProjectPath)
 
 		if err := run.EmbedMobileProfile(info.Bundle.Name, c.ProfilePath); err != nil {

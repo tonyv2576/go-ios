@@ -6,6 +6,7 @@ import (
 )
 
 func IsInstalled(cmdname string) (bool, error) {
+	// check if a command exists
 	out, err := runCommand("type", cmdname)
 	if err != nil {
 		return false, err
@@ -15,6 +16,8 @@ func IsInstalled(cmdname string) (bool, error) {
 
 	return strings.HasPrefix(out, cmdname), nil
 }
+
+// i considered just installing ios-deploy myself if it wasnt found but that would still require the user to install brew
 
 // func InstallIosDeploy() error {
 // 	found, err := IsInstalled("ios-deploy")
@@ -37,12 +40,15 @@ func IsInstalled(cmdname string) (bool, error) {
 // }
 
 func CheckDependencies() error {
+	// check for dependencies before running any commands
+	// note: most of these should be installed onto your mac by default
 	check := func(cmd string) error {
 		found, err := IsInstalled(cmd)
 		if err != nil {
 			return err
 		} else if !found {
-			return errors.New("unable to find command: " + cmd)
+			// return a pretty error to the user
+			return errors.New("unable to find the following command: " + cmd)
 		}
 		return nil
 	}
