@@ -10,33 +10,46 @@ var conf = &Config{}
 
 func init() {
 	if len(os.Args) < 2 {
-		fmt.Println("expected 'build', 'sign', or 'install' subcommands")
+		fmt.Println("must use one of the following subcommands: 'export', 'build', 'sign', or 'install'")
 		os.Exit(1)
 	}
 
 	var bundle, profile, cert, appended string
 	var unsigned, simulator bool
+	var noInstall bool
+	var silent bool
 
 	buildCmd := flag.NewFlagSet("build", flag.ExitOnError)
 	buildCmd.StringVar(&bundle, "bundle", "", "Bundle identifier")
 	buildCmd.StringVar(&appended, "append", "", "Creates an unsigned build and with custom keys")
 	buildCmd.BoolVar(&unsigned, "unsigned", false, "Creates an unsigned build with an editable plist file")
-	buildCmd.BoolVar(&simulator, "simulator", false, "Creates a build compatible with ios simulators")
+	buildCmd.BoolVar(&simulator, "simulator", false, "Creates an ios simualtor compatible build")
+	buildCmd.BoolVar(&silent, "silent", false, "Disables log output")
 
 	signCmd := flag.NewFlagSet("sign", flag.ExitOnError)
 	signCmd.StringVar(&profile, "profile", "", "Mobile provisioning profile")
 	signCmd.StringVar(&cert, "cert", "", "Certificate to use")
+	signCmd.BoolVar(&silent, "silent", false, "Disables log output")
+
+	exportCmd := flag.NewFlagSet("export", flag.ExitOnError)
+	exportCmd.BoolVar(&noInstall, "no-install", false, "Skips the installation process")
+	exportCmd.StringVar(&bundle, "bundle", "", "Bundle identifier")
+	exportCmd.StringVar(&appended, "append", "", "Creates an unsigned build and with custom keys")
+	exportCmd.BoolVar(&simulator, "simulator", false, "Creates an ios simualtor compatible build")
+	exportCmd.StringVar(&profile, "profile", "", "Mobile provisioning profile")
+	exportCmd.StringVar(&cert, "cert", "", "Certificate to use")
+	exportCmd.BoolVar(&silent, "silent", false, "Disables log output")
 
 	installCmd := flag.NewFlagSet("install", flag.ExitOnError)
+	installCmd.BoolVar(&silent, "silent", false, "Disables log output")
 
 	switch os.Args[1] {
-	case "build":
+	case "export":
 		conf.Mode = 1
+		exportCmd.Parse(os.Args[2:])
+	case "build":
+		conf.Mode = 2
 		buildCmd.Parse(os.Args[2:])
-
-		if unsigned || len(appended) > 0 {
-			conf.Mode = 2
-		}
 	case "sign":
 		conf.Mode = 3
 		signCmd.Parse(os.Args[2:])
@@ -67,12 +80,19 @@ func init() {
 		}
 	}
 
+	if len(targetDir) <= 0 {
+		targetDir = "."
+	}
+
 	conf.Bundle = bundle
 	conf.ProfilePath = profile
 	conf.Certificate = cert
 	conf.CodePath = targetDir
 	conf.AppendedPath = appended
 	conf.Simulator = simulator
+	conf.NoInstall = noInstall
+	conf.Unsigned = unsigned
+	conf.Silent = silent
 }
 
 func main() {
